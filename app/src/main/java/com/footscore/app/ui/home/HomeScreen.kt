@@ -176,9 +176,10 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
                 modifier = Modifier.padding(top = 4.dp)
             )
 
-            if (uiState.registrationError != null) {
+            val registrationError = uiState.registrationError
+            if (registrationError != null) {
                 Text(
-                    text = uiState.registrationError,
+                    text = registrationError,
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(top = 4.dp)
                 )
