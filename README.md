@@ -8,7 +8,7 @@ resultados dos seus times de futebol favoritos.
 ```
 ┌──────────────┐   registra token FCM +    ┌──────────────────┐   consulta jogos   ┌────────────────┐
 │  App Android │   favoritos/horário       │  Backend (Railway) │ ─────────────────▶ │  API-Football   │
-│  (Compose)   │ ─────────────────────────▶│  Node.js + Express │ ◀───────────────── │  (RapidAPI)     │
+│  (Compose)   │ ─────────────────────────▶│  Node.js + Express │ ◀───────────────── │  (API-Sports)   │
 └──────────────┘                           └────────┬──────────┘                    └────────────────┘
        ▲                                             │ push via FCM
        └─────────────────────────────────────────────┘  no horário configurado
@@ -40,14 +40,18 @@ Testei três alternativas antes de fechar nessa:
   plano grátis **não cobre Copa Libertadores nem Copa do Brasil**, só as
   principais ligas europeias + Brasileirão + Champions League. Descartado por
   não cobrir tudo que você pediu.
-- **API-Football (RapidAPI)**: a escolhida. Cobre tudo (incluindo Libertadores
-  e Copa do Brasil), plano grátis de 100 requisições/dia sem restrição por
-  competição (o app usa ~2-3/dia), e é a própria infraestrutura da RapidAPI
-  feita pra servir clientes de servidor — sem o risco de bloqueio de IP que
-  o Sofascore tem.
+- **API-Football**: a escolhida. Cobre tudo (incluindo Libertadores e Copa do
+  Brasil), plano grátis de 100 requisições/dia sem restrição por competição
+  (o app usa ~2-3/dia). Testado ao vivo (com chave falsa, só pra confirmar
+  que não é bloqueio de rede) e a resposta veio certinha da API de verdade.
 
-⚠️ **A URL certa no RapidAPI mudou**: `rapidapi.com/api-sports/api/api-football/details`
-(repare no `/details` no final — sem ele dá "API not found").
+⚠️ **Não é via RapidAPI**: o marketplace da RapidAPI deu "API not found" de
+forma inconsistente (a listagem pode ter saído de lá, ou é algo regional/de
+conta — não cheguei a uma causa certa). Em vez de depender disso, o backend
+usa o **painel direto da própria API-Sports**
+(`dashboard.api-football.com`), que dá a mesma API, mesmo plano grátis, só
+com header de autenticação diferente (`x-apisports-key` em vez de
+`X-RapidAPI-Key`).
 
 ⚠️ **IDs de liga resolvidos dinamicamente, não hardcoded**: em vez de cravar
 os IDs numéricos de cada liga no código (arriscado — não tive como confirmar
@@ -109,12 +113,12 @@ branca em dispositivos no modo escuro antes do Compose carregar.
 
 ## 2. Conseguir a API key gratuita da API-Football
 
-1. Crie uma conta em https://rapidapi.com
-2. Acesse **https://rapidapi.com/api-sports/api/api-football/details** (repare
-   no `/details` — a URL sem isso não funciona mais).
-3. Clique em "Subscribe to Test" e escolha o plano **Basic** (gratuito).
-4. Na aba "Endpoints", copie o valor de `X-RapidAPI-Key` — vai **só** no
-   backend, nunca no app.
+Pelo painel direto da própria API-Sports (não pela RapidAPI):
+
+1. Cadastre-se em **https://dashboard.api-football.com/register**.
+2. Confirme o e-mail e entre no dashboard.
+3. Copie sua chave da API — vai **só** no backend, nunca no app.
+4. Plano gratuito: 100 requisições/dia (o app usa ~2-3/dia).
 
 ## 3. Publicar o backend no Railway
 
@@ -122,7 +126,7 @@ branca em dispositivos no modo escuro antes do Compose carregar.
    repositório GitHub, apontando a **raiz do serviço para a pasta `backend/`**
    (em Settings → Root Directory).
 2. Em Variables, defina:
-   - `RAPIDAPI_KEY`: a chave do passo 2.
+   - `API_FOOTBALL_KEY`: a chave do passo 2.
    - `APP_SHARED_SECRET`: qualquer string longa e aleatória, inventada por você
      (ex.: gere com `openssl rand -hex 32`). É o "cadeado" que impede qualquer
      pessoa de usar seu backend/sua cota da API.

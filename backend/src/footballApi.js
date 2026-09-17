@@ -1,8 +1,10 @@
 const config = require('./config');
 const { LEAGUE_CATALOG } = require('./leagues');
 
-const BASE_URL = 'https://api-football-v1.p.rapidapi.com/v3';
-const API_HOST = 'api-football-v1.p.rapidapi.com';
+// Painel direto da API-Sports (dashboard.api-football.com), não via RapidAPI —
+// mesma API, mesmo plano grátis (100 req/dia), só muda a URL base e o header
+// de autenticação. Formato de resposta idêntico ao da versão RapidAPI.
+const BASE_URL = 'https://v3.football.api-sports.io';
 const FIXTURES_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutos
 const LEAGUE_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24h — id/temporada da liga quase nunca mudam
 
@@ -15,14 +17,17 @@ async function callApi(path, params = {}) {
 
   const response = await fetch(url, {
     headers: {
-      'X-RapidAPI-Key': config.rapidApiKey,
-      'X-RapidAPI-Host': API_HOST,
+      'x-apisports-key': config.apiFootballKey,
     },
   });
   if (!response.ok) {
     throw new Error(`API-Football respondeu ${response.status} para ${path}`);
   }
-  return response.json();
+  const json = await response.json();
+  if (json.errors && Object.keys(json.errors).length > 0) {
+    throw new Error(`API-Football retornou erro para ${path}: ${JSON.stringify(json.errors)}`);
+  }
+  return json;
 }
 
 async function getFixturesByDate(date) {
