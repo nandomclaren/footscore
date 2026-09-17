@@ -6,25 +6,52 @@ resultados dos seus times de futebol favoritos.
 ## Arquitetura
 
 ```
-┌──────────────┐   registra token FCM +    ┌──────────────────┐   consulta jogos   ┌───────────────┐
-│  App Android │   favoritos/horário       │  Backend (Railway) │ ─────────────────▶ │  API-Football  │
-│  (Compose)   │ ─────────────────────────▶│  Node.js + Express │ ◀───────────────── │  (RapidAPI)    │
-└──────────────┘                           └────────┬──────────┘                    └───────────────┘
+┌──────────────┐   registra token FCM +    ┌──────────────────┐   consulta jogos   ┌────────────────┐
+│  App Android │   favoritos/horário       │  Backend (Railway) │ ─────────────────▶ │  Sofascore      │
+│  (Compose)   │ ─────────────────────────▶│  Node.js + Express │ ◀───────────────── │  (API pública)  │
+└──────────────┘                           └────────┬──────────┘                    └────────────────┘
        ▲                                             │ push via FCM
        └─────────────────────────────────────────────┘  no horário configurado
 ```
 
-O app **não fala mais direto com a API-Football**: ele registra no backend
+O app **não fala direto com nenhuma API de futebol**: ele registra no backend
 (hospedado no Railway) o token do Firebase Cloud Messaging, os times favoritos e
 o horário desejado. Um cron dentro do backend roda a cada minuto, confere se é o
 horário de algum assinante (no fuso horário dele) e, se sim, busca os jogos de
 hoje/ontem, filtra pelos times favoritos e dispara uma notificação push. Isso
-tem duas vantagens sobre rodar tudo no celular com WorkManager:
+tem vantagens sobre rodar tudo no celular com WorkManager:
 
-1. **A chave da API-Football nunca fica no APK** — só no backend.
-2. **Não depende do Android não matar a tarefa em segundo plano** (Doze,
+1. Não depende do Android não matar a tarefa em segundo plano (Doze,
    otimização de bateria, fabricantes agressivos como Xiaomi/Samsung) — quem
    decide notificar é o servidor, que empurra via push.
+2. Se a fonte de dados de futebol mudar de novo no futuro, é só trocar
+   `backend/src/footballApi.js` — o app Android não muda.
+
+### ⚠️ Fonte de dados: API pública (não-oficial) do Sofascore
+
+Tentei usar a API-Football (RapidAPI) primeiro, mas a listagem sumiu do
+marketplace ("API not found"). A alternativa implementada é a **API pública que
+o próprio site/app do Sofascore usa** (`api.sofascore.com`) — não-oficial, sem
+chave, gratuita. Mapeei os endpoints e nomes de campos cruzando documentação de
+projetos open-source (não RapidAPI/API-Football), mas **não consegui testar uma
+chamada real** a partir do ambiente onde montei isso, porque a rede de lá
+bloqueava esse domínio por política própria. Duas coisas para ficar de olho:
+
+- Rode este teste no seu computador (rede doméstica normal) antes de configurar
+  Firebase/Railway, só para confirmar que os endpoints estão certos:
+  ```bash
+  curl -s "https://api.sofascore.com/api/v1/unique-tournament/17/seasons" \
+    -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36" \
+    -H "Accept: application/json"
+  ```
+  Deve voltar um JSON com `"seasons": [...]`.
+- Por ser não-oficial, existe o risco de a Sofascore bloquear IPs de datacenter
+  (Cloudflare costuma fazer isso com provedores como Railway/AWS/GCP) mesmo com
+  headers de navegador. Isso só dá pra confirmar depois do deploy: teste
+  `https://SEU-BACKEND.up.railway.app/teams?tournamentId=17` — se voltar um erro
+  502 mencionando "Sofascore respondeu 403", é bloqueio de IP, e a solução seria
+  trocar de fonte de dados novamente (ex.: voltar para uma API paga que aceite
+  tráfego de servidor, como a Football-Data.org ou outra do RapidAPI).
 
 ## O que o app faz
 
@@ -70,24 +97,19 @@ branca em dispositivos no modo escuro antes do Compose carregar.
    (esse arquivo é ignorado pelo git — cada pessoa usa o seu próprio projeto Firebase).
 4. Ainda no Firebase Console, vá em **Configurações do projeto → Contas de serviço**
    e clique em "Gerar nova chave privada". Isso baixa um JSON — guarde-o, você vai
-   precisar dele no passo 3 (deploy do backend).
+   precisar dele no passo 2 (deploy do backend).
 
-## 2. Conseguir a API key gratuita da API-Football
+## 2. Publicar o backend no Railway
 
-1. Crie uma conta em https://rapidapi.com/api-sports/api/api-football
-2. Assine o plano gratuito ("Basic").
-3. Copie a sua chave (`X-RapidAPI-Key`) — ela vai **só** no backend, nunca no app.
-
-## 3. Publicar o backend no Railway
+Não precisa de nenhuma conta/chave de API de futebol — só Firebase.
 
 1. No [Railway](https://railway.app), crie um novo projeto a partir deste
    repositório GitHub, apontando a **raiz do serviço para a pasta `backend/`**
    (em Settings → Root Directory).
 2. Em Variables, defina:
-   - `RAPIDAPI_KEY`: a chave que você pegou no passo 2.
    - `APP_SHARED_SECRET`: qualquer string longa e aleatória, inventada por você
      (ex.: gere com `openssl rand -hex 32`). É o "cadeado" que impede qualquer
-     pessoa de usar seu backend/sua cota da API.
+     pessoa de usar seu backend.
    - `FIREBASE_SERVICE_ACCOUNT_BASE64`: o JSON da conta de serviço do passo 1.4,
      codificado em base64 em uma linha só:
      ```bash
@@ -96,7 +118,10 @@ branca em dispositivos no modo escuro antes do Compose carregar.
 3. Faça o deploy (o Railway detecta Node automaticamente via `package.json` e
    roda `npm start`).
 4. Em Settings → Networking, gere um domínio público. Você vai usar essa URL no app.
-5. (Opcional) Para o registro de dispositivos sobreviver a redeploys, adicione um
+5. Teste `https://SEU-DOMINIO.up.railway.app/teams?tournamentId=17` com o header
+   `X-App-Secret: <o mesmo valor do passo 2>` — veja o aviso sobre bloqueio de IP
+   acima se isso falhar.
+6. (Opcional) Para o registro de dispositivos sobreviver a redeploys, adicione um
    Volume do Railway montado na pasta `data/` do serviço. Sem isso, um redeploy
    apaga `subscribers.json` — mas é inofensivo: basta abrir o app de novo, que
    ele reenvia o registro automaticamente.
@@ -105,15 +130,15 @@ Para testar localmente antes de publicar:
 
 ```bash
 cd backend
-cp .env.example .env   # preencha as três variáveis
+cp .env.example .env   # preencha as duas variáveis
 npm install
 npm start
 ```
 
-## 4. Configurar o app
+## 3. Configurar o app
 
-Copie o exemplo e preencha com a URL do Railway (passo 3.4) e o mesmo segredo
-do passo 3.2:
+Copie o exemplo e preencha com a URL do Railway (passo 2.4) e o mesmo segredo
+do passo 2.2:
 
 ```bash
 cp local.properties.example local.properties
@@ -127,7 +152,7 @@ backend.secret=o_mesmo_valor_de_APP_SHARED_SECRET_no_Railway
 
 Confirme também que `app/google-services.json` está no lugar (passo 1.3).
 
-## 5. Rodar no Android Studio
+## 4. Rodar no Android Studio
 
 1. Abra a pasta do projeto no Android Studio (Giraffe/Koala ou mais recente).
 2. Deixe o Gradle sincronizar (ele baixa o wrapper do Gradle 8.6 automaticamente
@@ -149,7 +174,7 @@ Confirme também que `app/google-services.json` está no lugar (passo 1.3).
 ```
 app/src/main/java/com/footscore/app/
 ├── data/
-│   ├── model/            League.kt, FavoriteTeam.kt
+│   ├── model/            League.kt (IDs de torneio do Sofascore), FavoriteTeam.kt
 │   ├── local/             UserPreferences.kt, UserPreferencesRepository.kt (DataStore)
 │   ├── remote/            BackendApiConfig.kt, BackendApiService.kt, dto/*.kt
 │   └── repository/        FootballRepository.kt, DeviceRegistrationRepository.kt
@@ -163,18 +188,21 @@ backend/src/
 ├── index.js        Ponto de entrada (Express + start do cron)
 ├── config.js        Leitura das variáveis de ambiente
 ├── routes.js         /register, /teams, /test-notify
-├── footballApi.js    Proxy autenticado para a API-Football (com cache por data)
+├── footballApi.js    Cliente da API pública do Sofascore (com cache por data/temporada)
 ├── notifier.js        Laço de verificação por minuto (node-cron)
 ├── firebase.js         Envio de push via firebase-admin
 └── store.js            Persistência simples em JSON dos assinantes
 ```
 
-### IDs de liga
+### IDs de torneio (liga)
 
-Os IDs de liga usados (`data/model/League.kt`) são os documentados pela
-API-Football (Brasileirão = 71, Premier League = 39, La Liga = 140,
-Champions League = 2, etc.). Caso a API mude algum ID, esse é o único arquivo
-que precisa de ajuste.
+Os IDs usados em `data/model/League.kt` são os "uniqueTournament" do Sofascore —
+o número no final da URL de cada torneio em sofascore.com (ex.:
+`sofascore.com/football/tournament/england/premier-league/17` → `17`).
+Confirmados via busca (Brasileirão = 325, Premier League = 17, La Liga = 8,
+Champions League = 7, Serie A itaiana = 23, Bundesliga = 35, Ligue 1 = 34).
+Caso algum pare de funcionar, é só achar o torneio em sofascore.com e copiar o
+número da URL.
 
 ## Licença
 

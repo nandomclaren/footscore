@@ -5,6 +5,6 @@ import com.footscore.app.data.remote.dto.TeamInfoDto
 
 class FootballRepository(private val api: BackendApiService) {
 
-    suspend fun getTeamsByLeague(leagueId: Int, season: Int): List<TeamInfoDto> =
-        api.getTeams(leagueId, season).teams
+    suspend fun getTeamsByLeague(leagueId: Int): List<TeamInfoDto> =
+        api.getTeams(leagueId).teams
 }

@@ -7,7 +7,6 @@ import androidx.lifecycle.viewModelScope
 import com.footscore.app.data.local.UserPreferencesRepository
 import com.footscore.app.data.model.FavoriteTeam
 import com.footscore.app.data.model.League
-import com.footscore.app.data.model.currentSeason
 import com.footscore.app.data.remote.BackendApiConfig
 import com.footscore.app.data.remote.dto.TeamInfoDto
 import com.footscore.app.data.repository.DeviceRegistrationRepository
@@ -87,7 +86,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         leagueState.update { it.copy(selectedLeague = league, isLoading = true, error = null) }
         viewModelScope.launch {
             try {
-                val teams = footballRepository.getTeamsByLeague(league.id, league.currentSeason())
+                val teams = footballRepository.getTeamsByLeague(league.id)
                 leagueState.update { it.copy(teams = teams, isLoading = false) }
             } catch (e: Exception) {
                 leagueState.update {

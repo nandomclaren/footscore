@@ -3,8 +3,6 @@ const { getAllSubscribers, markNotifiedToday } = require('./store');
 const { getFixturesByDate } = require('./footballApi');
 const { sendNotification } = require('./firebase');
 
-const FINISHED_STATUSES = new Set(['FT', 'AET', 'PEN']);
-
 function nowInTimezone(timezone) {
   const parts = new Intl.DateTimeFormat('en-GB', {
     timeZone: timezone,
@@ -34,16 +32,19 @@ async function checkSubscriber(subscriber) {
   ]);
 
   const favoriteIds = new Set(subscriber.favoriteTeamIds);
-  const relevant = [...fixturesToday, ...fixturesYesterday].filter((fixture) => {
-    const finished = FINISHED_STATUSES.has(fixture.fixture.status.short);
+  const seenIds = new Set();
+  const relevant = [...fixturesToday, ...fixturesYesterday].filter((event) => {
+    if (seenIds.has(event.id)) return false;
+    seenIds.add(event.id);
+    const finished = event.status?.type === 'finished';
     const involvesFavorite =
-      favoriteIds.has(fixture.teams.home.id) || favoriteIds.has(fixture.teams.away.id);
+      favoriteIds.has(event.homeTeam?.id) || favoriteIds.has(event.awayTeam?.id);
     return finished && involvesFavorite;
   });
 
   if (relevant.length > 0) {
     const body = relevant
-      .map((f) => `${f.teams.home.name} ${f.goals.home ?? '-'} x ${f.goals.away ?? '-'} ${f.teams.away.name}`)
+      .map((e) => `${e.homeTeam.name} ${e.homeScore?.current ?? '-'} x ${e.awayScore?.current ?? '-'} ${e.awayTeam.name}`)
       .join('\n');
     await sendNotification(subscriber.fcmToken, 'Footscore', body);
   } else if (subscriber.notifyIfNoGames) {

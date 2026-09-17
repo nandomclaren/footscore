@@ -1,32 +1,22 @@
 package com.footscore.app.data.model
 
-import java.time.LocalDate
-
 /**
- * IDs de liga conforme a API-Football (RapidAPI). Confira/ajuste em
- * https://www.api-football.com/documentation-v3#tag/Leagues caso a API mude algum ID.
+ * IDs de "uniqueTournament" conforme a API pública do Sofascore. São os números
+ * visíveis no final da URL de cada torneio em sofascore.com, ex.:
+ * sofascore.com/football/tournament/england/premier-league/17 -> id = 17.
+ * O backend resolve a temporada atual sozinho (não precisa mandar daqui).
  */
 data class League(
     val id: Int,
-    val displayName: String,
-    val isEuropeanSeasonFormat: Boolean = true
+    val displayName: String
 )
 
 val MAIN_LEAGUES = listOf(
-    League(id = 71, displayName = "Brasileirão Série A", isEuropeanSeasonFormat = false),
-    League(id = 39, displayName = "Premier League"),
-    League(id = 140, displayName = "La Liga"),
-    League(id = 2, displayName = "Champions League"),
-    League(id = 135, displayName = "Serie A (Itália)"),
-    League(id = 78, displayName = "Bundesliga"),
-    League(id = 61, displayName = "Ligue 1")
+    League(id = 325, displayName = "Brasileirão Série A"),
+    League(id = 17, displayName = "Premier League"),
+    League(id = 8, displayName = "La Liga"),
+    League(id = 7, displayName = "Champions League"),
+    League(id = 23, displayName = "Serie A (Itália)"),
+    League(id = 35, displayName = "Bundesliga"),
+    League(id = 34, displayName = "Ligue 1")
 )
-
-/**
- * Ligas europeias numeram a temporada pelo ano de início (ex.: 2025 para 2025/26).
- * O Brasileirão numeia pelo próprio ano civil.
- */
-fun League.currentSeason(today: LocalDate = LocalDate.now()): Int {
-    if (!isEuropeanSeasonFormat) return today.year
-    return if (today.monthValue >= 7) today.year else today.year - 1
-}

@@ -1,7 +1,7 @@
 const express = require('express');
 const config = require('./config');
 const { upsertSubscriber } = require('./store');
-const { getTeamsByLeague } = require('./footballApi');
+const { getTeamsByTournament } = require('./footballApi');
 const { sendNotification } = require('./firebase');
 
 const router = express.Router();
@@ -43,17 +43,18 @@ router.post('/register', (req, res) => {
   res.json({ ok: true, subscriber });
 });
 
-// Proxy do endpoint de times da API-Football, só para a tela de seleção do app
-// (assim a chave da API nunca precisa sair do backend).
+// Proxy do endpoint de times do Sofascore, só para a tela de seleção do app.
+// O backend resolve a temporada atual sozinho (ver footballApi.getCurrentSeasonId).
 router.get('/teams', async (req, res) => {
-  const leagueId = Number(req.query.league);
-  const season = Number(req.query.season);
-  if (!leagueId || !season) {
-    return res.status(400).json({ error: 'parâmetros league e season são obrigatórios' });
+  const tournamentId = Number(req.query.tournamentId);
+  if (!tournamentId) {
+    return res.status(400).json({ error: 'parâmetro tournamentId é obrigatório' });
   }
   try {
-    const teams = await getTeamsByLeague(leagueId, season);
-    res.json({ teams });
+    const teams = await getTeamsByTournament(tournamentId);
+    res.json({
+      teams: teams.map((team) => ({ id: team.id, name: team.name })),
+    });
   } catch (err) {
     res.status(502).json({ error: err.message });
   }
