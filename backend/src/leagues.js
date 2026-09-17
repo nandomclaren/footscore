@@ -6,7 +6,7 @@
 const LEAGUE_CATALOG = {
   brasileirao: { name: 'Serie A', country: 'Brazil', label: 'Brasileirão Série A' },
   'copa-do-brasil': { name: 'Copa do Brasil', country: 'Brazil', label: 'Copa do Brasil' },
-  libertadores: { name: 'Copa Libertadores', country: null, label: 'Copa Libertadores' },
+  libertadores: { name: 'CONMEBOL Libertadores', country: null, label: 'Copa Libertadores' },
   'premier-league': { name: 'Premier League', country: 'England', label: 'Premier League' },
   'la-liga': { name: 'La Liga', country: 'Spain', label: 'La Liga' },
   'champions-league': { name: 'UEFA Champions League', country: null, label: 'Champions League' },
