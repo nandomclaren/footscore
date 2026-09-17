@@ -8,6 +8,15 @@ const BASE_URL = 'https://v3.football.api-sports.io';
 const FIXTURES_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutos
 const LEAGUE_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24h — id/temporada da liga quase nunca mudam
 
+// O plano grátis da API-Football só dá acesso a /teams (e outros endpoints
+// "season-scoped") das temporadas 2022–2024 — confirmado ao vivo, a temporada
+// atual (2026) dá erro de plano. /fixtures?date=... não tem essa restrição
+// (é isso que a checagem diária usa, então não é afetado). Aqui usamos a
+// temporada permitida mais recente só pra listar times na tela de seleção;
+// o ID de cada time não muda entre temporadas, então o favorito continua
+// batendo certinho com os jogos reais de 2026.
+const LATEST_FREE_PLAN_SEASON = 2024;
+
 const fixturesCache = new Map(); // date -> { fetchedAt, data }
 const leagueCache = new Map(); // slug -> { fetchedAt, leagueId, season }
 
@@ -69,16 +78,19 @@ async function resolveLeague(slug) {
     throw new Error(`Nenhuma liga encontrada na API para "${catalogEntry.name}" (slug: ${slug})`);
   }
 
-  const currentSeason = match.seasons?.find((s) => s.current) || match.seasons?.at(-1);
-  if (!currentSeason) {
-    throw new Error(`Liga "${match.league.name}" não tem temporada atual (slug: ${slug})`);
+  const season =
+    match.seasons?.find((s) => s.year === LATEST_FREE_PLAN_SEASON) ||
+    match.seasons?.find((s) => s.current) ||
+    match.seasons?.at(-1);
+  if (!season) {
+    throw new Error(`Liga "${match.league.name}" não tem nenhuma temporada disponível (slug: ${slug})`);
   }
 
   const resolved = {
     fetchedAt: Date.now(),
     leagueId: match.league.id,
     leagueName: match.league.name,
-    season: currentSeason.year,
+    season: season.year,
   };
   leagueCache.set(slug, resolved);
   return resolved;
