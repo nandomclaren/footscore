@@ -2,6 +2,7 @@ package com.footscore.app.data.remote
 
 import com.footscore.app.BuildConfig
 import kotlinx.serialization.json.Json
+import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -9,22 +10,17 @@ import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 
 /**
- * Ponto único de configuração da API-Football (via RapidAPI).
- *
- * A chave gratuita fica em local.properties -> rapidapi.key (veja local.properties.example),
- * lida em build.gradle.kts e exposta aqui como BuildConfig.RAPIDAPI_KEY.
- * Crie sua chave em: https://rapidapi.com/api-sports/api/api-football
+ * Aponta para o backend próprio (hospedado no Railway), que esconde a chave
+ * da API-Football do app e dispara as notificações via FCM. Configure a URL
+ * e o segredo compartilhado em local.properties (backend.baseUrl / backend.secret) —
+ * o mesmo segredo precisa estar em APP_SHARED_SECRET no Railway.
  */
-object ApiConfig {
-    private const val BASE_URL = "https://api-football-v1.p.rapidapi.com/v3/"
-    private const val API_HOST = "api-football-v1.p.rapidapi.com"
-
+object BackendApiConfig {
     private val json = Json { ignoreUnknownKeys = true }
 
-    private val authInterceptor = okhttp3.Interceptor { chain ->
+    private val authInterceptor = Interceptor { chain ->
         val request = chain.request().newBuilder()
-            .addHeader("X-RapidAPI-Key", BuildConfig.RAPIDAPI_KEY)
-            .addHeader("X-RapidAPI-Host", API_HOST)
+            .addHeader("X-App-Secret", BuildConfig.APP_SHARED_SECRET)
             .build()
         chain.proceed(request)
     }
@@ -41,10 +37,10 @@ object ApiConfig {
         .build()
 
     private val retrofit = Retrofit.Builder()
-        .baseUrl(BASE_URL)
+        .baseUrl(BuildConfig.BACKEND_BASE_URL)
         .client(okHttpClient)
         .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
         .build()
 
-    val footballApi: FootballApiService by lazy { retrofit.create(FootballApiService::class.java) }
+    val backendApi: BackendApiService by lazy { retrofit.create(BackendApiService::class.java) }
 }

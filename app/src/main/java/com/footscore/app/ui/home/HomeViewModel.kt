@@ -1,16 +1,17 @@
 package com.footscore.app.ui.home
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.footscore.app.data.local.UserPreferencesRepository
 import com.footscore.app.data.model.FavoriteTeam
 import com.footscore.app.data.model.League
 import com.footscore.app.data.model.currentSeason
-import com.footscore.app.data.remote.ApiConfig
+import com.footscore.app.data.remote.BackendApiConfig
 import com.footscore.app.data.remote.dto.TeamInfoDto
+import com.footscore.app.data.repository.DeviceRegistrationRepository
 import com.footscore.app.data.repository.FootballRepository
-import com.footscore.app.worker.WorkScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -28,7 +29,8 @@ data class HomeUiState(
     val selectedLeague: League? = null,
     val teams: List<TeamInfoDto> = emptyList(),
     val isLoadingTeams: Boolean = false,
-    val teamsError: String? = null
+    val teamsError: String? = null,
+    val registrationError: String? = null
 )
 
 private data class LeagueBrowseState(
@@ -41,14 +43,17 @@ private data class LeagueBrowseState(
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     private val prefsRepository = UserPreferencesRepository(application)
-    private val footballRepository = FootballRepository(ApiConfig.footballApi)
+    private val footballRepository = FootballRepository(BackendApiConfig.backendApi)
+    private val deviceRegistrationRepository = DeviceRegistrationRepository(BackendApiConfig.backendApi)
 
     private val leagueState = MutableStateFlow(LeagueBrowseState())
+    private val registrationErrorState = MutableStateFlow<String?>(null)
 
     val uiState: StateFlow<HomeUiState> = combine(
         prefsRepository.userPreferencesFlow,
-        leagueState
-    ) { prefs, browse ->
+        leagueState,
+        registrationErrorState
+    ) { prefs, browse, registrationError ->
         HomeUiState(
             favorites = prefs.favorites,
             hour = prefs.hour,
@@ -57,16 +62,23 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             selectedLeague = browse.selectedLeague,
             teams = browse.teams,
             isLoadingTeams = browse.isLoading,
-            teamsError = browse.error
+            teamsError = browse.error,
+            registrationError = registrationError
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
     init {
-        // Sempre que as preferências mudarem (inclusive na primeira leitura), garante
-        // que o WorkManager esteja agendado para o horário salvo mais recente.
+        // Sempre que as preferências mudarem (inclusive na primeira leitura), reenvia
+        // o registro para o backend, que é quem decide se/quando notificar.
         viewModelScope.launch {
             prefsRepository.userPreferencesFlow.collect { prefs ->
-                WorkScheduler.scheduleDaily(getApplication(), prefs.hour, prefs.minute)
+                try {
+                    deviceRegistrationRepository.registerCurrentDevice(prefs)
+                    registrationErrorState.value = null
+                } catch (e: Exception) {
+                    Log.e(TAG, "Falha ao registrar dispositivo no backend", e)
+                    registrationErrorState.value = "Não foi possível conectar ao servidor de notificações."
+                }
             }
         }
     }
@@ -81,7 +93,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 leagueState.update {
                     it.copy(
                         isLoading = false,
-                        error = "Não foi possível carregar os times. Verifique sua chave da API e a conexão."
+                        error = "Não foi possível carregar os times. Verifique o backend e a conexão."
                     )
                 }
             }
@@ -122,6 +134,17 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun sendTestNotification() {
-        WorkScheduler.runNow(getApplication())
+        viewModelScope.launch {
+            try {
+                deviceRegistrationRepository.sendTestNotification()
+            } catch (e: Exception) {
+                Log.e(TAG, "Falha ao enviar notificação de teste", e)
+                registrationErrorState.value = "Não foi possível enviar a notificação de teste."
+            }
+        }
+    }
+
+    companion object {
+        private const val TAG = "HomeViewModel"
     }
 }

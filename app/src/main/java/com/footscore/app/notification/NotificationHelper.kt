@@ -11,7 +11,6 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.footscore.app.R
-import com.footscore.app.data.remote.dto.FixtureItemDto
 
 object NotificationHelper {
     private const val CHANNEL_ID = "daily_results"
@@ -29,39 +28,17 @@ object NotificationHelper {
         manager?.createNotificationChannel(channel)
     }
 
-    fun showResultsNotification(context: Context, fixtures: List<FixtureItemDto>) {
+    /** Título e corpo já vêm prontos do backend (mensagem "data-only" do FCM). */
+    fun showPushNotification(context: Context, title: String, body: String) {
         ensureChannel(context)
-
-        val lines = fixtures.map { fixture ->
-            val home = fixture.teams.home.name
-            val away = fixture.teams.away.name
-            val homeGoals = fixture.goals.home?.toString() ?: "-"
-            val awayGoals = fixture.goals.away?.toString() ?: "-"
-            "$home $homeGoals x $awayGoals $away (${fixture.league.name})"
-        }
-        val bigText = lines.joinToString("\n")
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(context.getString(R.string.notification_title))
-            .setContentText(lines.firstOrNull().orEmpty())
-            .setStyle(NotificationCompat.BigTextStyle().bigText(bigText))
+            .setContentTitle(title)
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .build()
-
-        notify(context, notification)
-    }
-
-    fun showNoGamesNotification(context: Context) {
-        ensureChannel(context)
-
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(context.getString(R.string.notification_title))
-            .setContentText(context.getString(R.string.notification_no_games_text))
-            .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
 
         notify(context, notification)

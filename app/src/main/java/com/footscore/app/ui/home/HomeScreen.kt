@@ -22,6 +22,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.InputChipDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -159,10 +160,18 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
             }
 
             Text(
-                text = "A notificação diária está agendada para %02d:%02d, verificando jogos de hoje e de ontem."
+                text = "Seu aparelho está registrado no servidor para notificar às %02d:%02d, verificando jogos de hoje e de ontem."
                     .format(uiState.hour, uiState.minute),
                 modifier = Modifier.padding(top = 4.dp)
             )
+
+            if (uiState.registrationError != null) {
+                Text(
+                    text = uiState.registrationError,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
         }
     }
 

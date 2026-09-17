@@ -5,17 +5,21 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.serialization")
+    id("com.google.gms.google-services")
 }
 
-// Lê local.properties para pegar a chave da API sem commitar segredo nenhum.
-// Copie local.properties.example -> local.properties e preencha rapidapi.key.
+// Lê local.properties para pegar a URL/segredo do backend sem commitar nada.
+// Copie local.properties.example -> local.properties e preencha os dois campos.
+// A chave da API-Football em si não fica mais no app: ela vive só no backend
+// (Railway), que o app consome autenticado pelo segredo compartilhado.
 val localProperties = Properties().apply {
     val localPropsFile = rootProject.file("local.properties")
     if (localPropsFile.exists()) {
         load(FileInputStream(localPropsFile))
     }
 }
-val rapidApiKey: String = localProperties.getProperty("rapidapi.key") ?: ""
+val backendBaseUrl: String = localProperties.getProperty("backend.baseUrl") ?: ""
+val backendSecret: String = localProperties.getProperty("backend.secret") ?: ""
 
 android {
     namespace = "com.footscore.app"
@@ -28,7 +32,8 @@ android {
         versionCode = 1
         versionName = "1.0"
 
-        buildConfigField("String", "RAPIDAPI_KEY", "\"$rapidApiKey\"")
+        buildConfigField("String", "BACKEND_BASE_URL", "\"$backendBaseUrl\"")
+        buildConfigField("String", "APP_SHARED_SECRET", "\"$backendSecret\"")
 
         vectorDrawables {
             useSupportLibrary = true
@@ -88,14 +93,16 @@ dependencies {
     // DataStore (preferências: times favoritos e horário)
     implementation("androidx.datastore:datastore-preferences:1.1.1")
 
-    // WorkManager (execução em segundo plano garantida)
-    implementation("androidx.work:work-runtime-ktx:2.9.0")
-
-    // Retrofit + Kotlinx Serialization
+    // Retrofit + Kotlinx Serialization (fala só com o backend próprio)
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:1.0.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+
+    // Firebase Cloud Messaging (push disparado pelo backend, sem WorkManager local)
+    implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
+    implementation("com.google.firebase:firebase-messaging-ktx")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

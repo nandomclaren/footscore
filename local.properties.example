@@ -4,5 +4,9 @@
 # Caminho do Android SDK na sua máquina (o Android Studio costuma preencher sozinho).
 sdk.dir=/caminho/para/o/Android/sdk
 
-# Sua chave gratuita da API-Football (via RapidAPI): https://rapidapi.com/api-sports/api/api-football
-rapidapi.key=COLE_AQUI_SUA_CHAVE_DA_API
+# URL pública do backend no Railway (com "/" no final — obrigatório para o Retrofit).
+# A chave da API-Football NÃO fica mais aqui: ela vive só no backend (veja backend/.env.example).
+backend.baseUrl=https://seu-app.up.railway.app/
+
+# O mesmo valor que você colocar em APP_SHARED_SECRET nas variáveis de ambiente do Railway.
+backend.secret=defina_um_segredo_forte_aqui

@@ -1,0 +1,19 @@
+{
+  "name": "footscore-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Backend do Footscore: esconde a chave da API-Football, guarda os assinantes e dispara notificações push via FCM no horário configurado por cada um.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "firebase-admin": "^12.3.1",
+    "node-cron": "^3.0.3"
+  }
+}

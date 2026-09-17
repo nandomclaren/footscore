@@ -4,12 +4,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class TeamsResponseDto(
-    val response: List<TeamEntryDto> = emptyList()
-)
-
-@Serializable
-data class TeamEntryDto(
-    val team: TeamInfoDto
+    val teams: List<TeamInfoDto> = emptyList()
 )
 
 @Serializable
