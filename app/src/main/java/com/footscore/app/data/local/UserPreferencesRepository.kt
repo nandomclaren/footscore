@@ -9,6 +9,8 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.footscore.app.data.model.FavoriteTeam
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 private val Context.dataStore by preferencesDataStore(name = "footscore_prefs")
