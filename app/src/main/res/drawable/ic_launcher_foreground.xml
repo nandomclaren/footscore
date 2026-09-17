@@ -4,10 +4,57 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Bola: círculo branco -->
     <path
         android:fillColor="#FFFFFF"
         android:pathData="M54,30 A24,24 0 1,0 54,78 A24,24 0 1,0 54,30 Z" />
+
+    <!-- Pentágono central -->
     <path
         android:fillColor="#1B5E20"
-        android:pathData="M54,42 L61,47 L58,55 L50,55 L47,47 Z" />
+        android:pathData="M54,46.5 L61.13,51.68 L58.41,60.07 L49.59,60.07 L46.87,51.68 Z" />
+
+    <!-- Costuras saindo do pentágono até a borda -->
+    <path
+        android:strokeColor="#1B5E20"
+        android:strokeWidth="2.4"
+        android:strokeLineCap="round"
+        android:pathData="M54,46.5 L54,32" />
+    <path
+        android:strokeColor="#1B5E20"
+        android:strokeWidth="2.4"
+        android:strokeLineCap="round"
+        android:pathData="M61.13,51.68 L74.92,47.2" />
+    <path
+        android:strokeColor="#1B5E20"
+        android:strokeWidth="2.4"
+        android:strokeLineCap="round"
+        android:pathData="M58.41,60.07 L66.93,71.8" />
+    <path
+        android:strokeColor="#1B5E20"
+        android:strokeWidth="2.4"
+        android:strokeLineCap="round"
+        android:pathData="M49.59,60.07 L41.07,71.8" />
+    <path
+        android:strokeColor="#1B5E20"
+        android:strokeWidth="2.4"
+        android:strokeLineCap="round"
+        android:pathData="M46.87,51.68 L33.08,47.2" />
+
+    <!-- Pontas dos gomos vizinhos, tocando a borda -->
+    <path
+        android:fillColor="#1B5E20"
+        android:pathData="M51,32 A3,3 0 1,0 57,32 A3,3 0 1,0 51,32 Z" />
+    <path
+        android:fillColor="#1B5E20"
+        android:pathData="M71.92,47.2 A3,3 0 1,0 77.92,47.2 A3,3 0 1,0 71.92,47.2 Z" />
+    <path
+        android:fillColor="#1B5E20"
+        android:pathData="M63.93,71.8 A3,3 0 1,0 69.93,71.8 A3,3 0 1,0 63.93,71.8 Z" />
+    <path
+        android:fillColor="#1B5E20"
+        android:pathData="M38.07,71.8 A3,3 0 1,0 44.07,71.8 A3,3 0 1,0 38.07,71.8 Z" />
+    <path
+        android:fillColor="#1B5E20"
+        android:pathData="M30.08,47.2 A3,3 0 1,0 36.08,47.2 A3,3 0 1,0 30.08,47.2 Z" />
 </vector>
