@@ -1,5 +1,6 @@
 package com.footscore.app.data.remote
 
+import com.footscore.app.data.remote.dto.LeaguesResponseDto
 import com.footscore.app.data.remote.dto.RegisterDeviceRequest
 import com.footscore.app.data.remote.dto.RegisterDeviceResponse
 import com.footscore.app.data.remote.dto.TeamsResponseDto
@@ -14,8 +15,11 @@ interface BackendApiService {
     @POST("register")
     suspend fun registerDevice(@Body request: RegisterDeviceRequest): RegisterDeviceResponse
 
+    @GET("leagues")
+    suspend fun getLeagues(): LeaguesResponseDto
+
     @GET("teams")
-    suspend fun getTeams(@Query("tournamentId") tournamentId: Int): TeamsResponseDto
+    suspend fun getTeams(@Query("slug") slug: String): TeamsResponseDto
 
     @POST("test-notify")
     suspend fun sendTestNotification(@Body request: TestNotificationRequest): RegisterDeviceResponse

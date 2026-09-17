@@ -31,20 +31,21 @@ async function checkSubscriber(subscriber) {
     getFixturesByDate(yesterday),
   ]);
 
+  const FINISHED_STATUSES = new Set(['FT', 'AET', 'PEN']);
   const favoriteIds = new Set(subscriber.favoriteTeamIds);
   const seenIds = new Set();
-  const relevant = [...fixturesToday, ...fixturesYesterday].filter((event) => {
-    if (seenIds.has(event.id)) return false;
-    seenIds.add(event.id);
-    const finished = event.status?.type === 'finished';
+  const relevant = [...fixturesToday, ...fixturesYesterday].filter((fixture) => {
+    if (seenIds.has(fixture.fixture.id)) return false;
+    seenIds.add(fixture.fixture.id);
+    const finished = FINISHED_STATUSES.has(fixture.fixture.status.short);
     const involvesFavorite =
-      favoriteIds.has(event.homeTeam?.id) || favoriteIds.has(event.awayTeam?.id);
+      favoriteIds.has(fixture.teams.home.id) || favoriteIds.has(fixture.teams.away.id);
     return finished && involvesFavorite;
   });
 
   if (relevant.length > 0) {
     const body = relevant
-      .map((e) => `${e.homeTeam.name} ${e.homeScore?.current ?? '-'} x ${e.awayScore?.current ?? '-'} ${e.awayTeam.name}`)
+      .map((f) => `${f.teams.home.name} ${f.goals.home ?? '-'} x ${f.goals.away ?? '-'} ${f.teams.away.name}`)
       .join('\n');
     await sendNotification(subscriber.fcmToken, 'Footscore', body);
   } else if (subscriber.notifyIfNoGames) {

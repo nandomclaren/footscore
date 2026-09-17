@@ -1,8 +1,9 @@
 const express = require('express');
 const config = require('./config');
 const { upsertSubscriber } = require('./store');
-const { getTeamsByTournament } = require('./footballApi');
+const { getTeamsByLeague } = require('./footballApi');
 const { sendNotification } = require('./firebase');
+const { LEAGUE_CATALOG } = require('./leagues');
 
 const router = express.Router();
 
@@ -43,15 +44,26 @@ router.post('/register', (req, res) => {
   res.json({ ok: true, subscriber });
 });
 
-// Proxy do endpoint de times do Sofascore, só para a tela de seleção do app.
-// O backend resolve a temporada atual sozinho (ver footballApi.getCurrentSeasonId).
+// Lista de ligas disponíveis para o seletor do app (catálogo único, ver leagues.js —
+// o app não hardcoda essa lista, então adicionar uma liga nova é só editar aqui).
+router.get('/leagues', (_req, res) => {
+  const leagues = Object.entries(LEAGUE_CATALOG).map(([slug, entry]) => ({
+    slug,
+    label: entry.label,
+  }));
+  res.json({ leagues });
+});
+
+// Proxy do endpoint de times da API-Football, só para a tela de seleção do app
+// (a chave da API nunca sai do backend). O ID numérico da liga e a temporada
+// atual são resolvidos a partir do slug (ver footballApi.resolveLeague).
 router.get('/teams', async (req, res) => {
-  const tournamentId = Number(req.query.tournamentId);
-  if (!tournamentId) {
-    return res.status(400).json({ error: 'parâmetro tournamentId é obrigatório' });
+  const slug = req.query.slug;
+  if (typeof slug !== 'string' || !slug) {
+    return res.status(400).json({ error: 'parâmetro slug é obrigatório' });
   }
   try {
-    const teams = await getTeamsByTournament(tournamentId);
+    const teams = await getTeamsByLeague(slug);
     res.json({
       teams: teams.map((team) => ({ id: team.id, name: team.name })),
     });

@@ -21,3 +21,14 @@ data class RegisterDeviceResponse(
 data class TestNotificationRequest(
     val fcmToken: String
 )
+
+@Serializable
+data class LeaguesResponseDto(
+    val leagues: List<LeagueDto> = emptyList()
+)
+
+@Serializable
+data class LeagueDto(
+    val slug: String,
+    val label: String
+)

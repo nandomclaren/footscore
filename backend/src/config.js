@@ -10,6 +10,7 @@ function required(name) {
 
 module.exports = {
   port: process.env.PORT || 3000,
+  rapidApiKey: required('RAPIDAPI_KEY'),
   appSecret: required('APP_SHARED_SECRET'),
   firebaseServiceAccountBase64: required('FIREBASE_SERVICE_ACCOUNT_BASE64'),
 };

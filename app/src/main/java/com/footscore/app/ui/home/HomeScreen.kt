@@ -39,7 +39,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.footscore.app.data.model.MAIN_LEAGUES
 import com.footscore.app.ui.home.components.FootscoreTimePickerDialog
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -88,13 +87,25 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
             // Escolher por liga
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Escolher por liga", fontWeight = FontWeight.SemiBold)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    MAIN_LEAGUES.forEach { league ->
-                        FilterChip(
-                            selected = uiState.selectedLeague?.id == league.id,
-                            onClick = { viewModel.selectLeague(league) },
-                            label = { Text(league.displayName) }
-                        )
+
+                if (uiState.isLoadingLeagues) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().wrapContentHeight(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(28.dp))
+                    }
+                } else if (uiState.leaguesError != null) {
+                    Text(uiState.leaguesError.orEmpty())
+                } else {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        uiState.leagues.forEach { league ->
+                            FilterChip(
+                                selected = uiState.selectedLeague?.slug == league.slug,
+                                onClick = { viewModel.selectLeague(league) },
+                                label = { Text(league.label) }
+                            )
+                        }
                     }
                 }
 

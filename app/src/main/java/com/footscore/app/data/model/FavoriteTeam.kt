@@ -7,5 +7,5 @@ data class FavoriteTeam(
     val id: Int,
     val name: String,
     val logoUrl: String,
-    val leagueId: Int
+    val leagueSlug: String
 )

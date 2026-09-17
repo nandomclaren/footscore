@@ -1,24 +1,26 @@
-// Cliente para a API pública (não-oficial, sem chave) do Sofascore — a mesma
-// que o site/app deles usa. Como é não-documentada, ela pode mudar sem aviso;
-// se algum dia parar de responder, é o primeiro lugar a olhar.
-const BASE_URL = 'https://api.sofascore.com/api/v1';
+const config = require('./config');
+const { LEAGUE_CATALOG } = require('./leagues');
+
+const BASE_URL = 'https://api-football-v1.p.rapidapi.com/v3';
+const API_HOST = 'api-football-v1.p.rapidapi.com';
 const FIXTURES_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutos
-const SEASON_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24h — a temporada atual quase nunca muda
+const LEAGUE_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24h — id/temporada da liga quase nunca mudam
 
 const fixturesCache = new Map(); // date -> { fetchedAt, data }
-const seasonCache = new Map(); // tournamentId -> { fetchedAt, seasonId }
+const leagueCache = new Map(); // slug -> { fetchedAt, leagueId, season }
 
-async function callApi(path) {
-  const response = await fetch(`${BASE_URL}${path}`, {
+async function callApi(path, params = {}) {
+  const url = new URL(`${BASE_URL}${path}`);
+  Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, String(value)));
+
+  const response = await fetch(url, {
     headers: {
-      // Sem um User-Agent de navegador, a Sofascore costuma responder 403.
-      'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-      Accept: 'application/json',
+      'X-RapidAPI-Key': config.rapidApiKey,
+      'X-RapidAPI-Host': API_HOST,
     },
   });
   if (!response.ok) {
-    throw new Error(`Sofascore respondeu ${response.status} para ${path}`);
+    throw new Error(`API-Football respondeu ${response.status} para ${path}`);
   }
   return response.json();
 }
@@ -28,31 +30,59 @@ async function getFixturesByDate(date) {
   if (cached && Date.now() - cached.fetchedAt < FIXTURES_CACHE_TTL_MS) {
     return cached.data;
   }
-  const json = await callApi(`/sport/football/scheduled-events/${date}`);
-  const data = json.events || [];
+  const json = await callApi('/fixtures', { date });
+  const data = json.response || [];
   fixturesCache.set(date, { fetchedAt: Date.now(), data });
   return data;
 }
 
-async function getCurrentSeasonId(tournamentId) {
-  const cached = seasonCache.get(tournamentId);
-  if (cached && Date.now() - cached.fetchedAt < SEASON_CACHE_TTL_MS) {
-    return cached.seasonId;
+/**
+ * Resolve o ID numérico e a temporada atual de uma liga do catálogo (ver
+ * leagues.js) pesquisando por nome/país na própria API, em vez de depender
+ * de um ID hardcodado que a gente não teve como conferir ao vivo. Cacheado
+ * por 24h — na prática, resolvido uma vez só por liga.
+ */
+async function resolveLeague(slug) {
+  const cached = leagueCache.get(slug);
+  if (cached && Date.now() - cached.fetchedAt < LEAGUE_CACHE_TTL_MS) {
+    return cached;
   }
-  const json = await callApi(`/unique-tournament/${tournamentId}/seasons`);
-  const seasonId = json.seasons?.[0]?.id;
-  if (!seasonId) {
-    throw new Error(`Nenhuma temporada encontrada para o torneio ${tournamentId}`);
+
+  const catalogEntry = LEAGUE_CATALOG[slug];
+  if (!catalogEntry) {
+    throw new Error(`Liga desconhecida: ${slug}`);
   }
-  seasonCache.set(tournamentId, { fetchedAt: Date.now(), seasonId });
-  return seasonId;
+
+  const params = { search: catalogEntry.name };
+  const json = await callApi('/leagues', params);
+  const results = json.response || [];
+  const match = catalogEntry.country
+    ? results.find((r) => r.country?.name === catalogEntry.country) || results[0]
+    : results[0];
+
+  if (!match) {
+    throw new Error(`Nenhuma liga encontrada na API para "${catalogEntry.name}" (slug: ${slug})`);
+  }
+
+  const currentSeason = match.seasons?.find((s) => s.current) || match.seasons?.at(-1);
+  if (!currentSeason) {
+    throw new Error(`Liga "${match.league.name}" não tem temporada atual (slug: ${slug})`);
+  }
+
+  const resolved = {
+    fetchedAt: Date.now(),
+    leagueId: match.league.id,
+    leagueName: match.league.name,
+    season: currentSeason.year,
+  };
+  leagueCache.set(slug, resolved);
+  return resolved;
 }
 
-async function getTeamsByTournament(tournamentId) {
-  const seasonId = await getCurrentSeasonId(tournamentId);
-  const json = await callApi(`/unique-tournament/${tournamentId}/season/${seasonId}/standings/total`);
-  const rows = json.standings?.[0]?.rows || [];
-  return rows.map((row) => row.team);
+async function getTeamsByLeague(slug) {
+  const { leagueId, season } = await resolveLeague(slug);
+  const json = await callApi('/teams', { league: leagueId, season });
+  return (json.response || []).map((entry) => entry.team);
 }
 
-module.exports = { getFixturesByDate, getTeamsByTournament };
+module.exports = { getFixturesByDate, getTeamsByLeague, resolveLeague };

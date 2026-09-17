@@ -25,6 +25,9 @@ data class HomeUiState(
     val hour: Int = 20,
     val minute: Int = 0,
     val notifyIfNoGames: Boolean = false,
+    val leagues: List<League> = emptyList(),
+    val isLoadingLeagues: Boolean = false,
+    val leaguesError: String? = null,
     val selectedLeague: League? = null,
     val teams: List<TeamInfoDto> = emptyList(),
     val isLoadingTeams: Boolean = false,
@@ -33,10 +36,13 @@ data class HomeUiState(
 )
 
 private data class LeagueBrowseState(
+    val leagues: List<League> = emptyList(),
+    val isLoadingLeagues: Boolean = false,
+    val leaguesError: String? = null,
     val selectedLeague: League? = null,
     val teams: List<TeamInfoDto> = emptyList(),
-    val isLoading: Boolean = false,
-    val error: String? = null
+    val isLoadingTeams: Boolean = false,
+    val teamsError: String? = null
 )
 
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
@@ -58,10 +64,13 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             hour = prefs.hour,
             minute = prefs.minute,
             notifyIfNoGames = prefs.notifyIfNoGames,
+            leagues = browse.leagues,
+            isLoadingLeagues = browse.isLoadingLeagues,
+            leaguesError = browse.leaguesError,
             selectedLeague = browse.selectedLeague,
             teams = browse.teams,
-            isLoadingTeams = browse.isLoading,
-            teamsError = browse.error,
+            isLoadingTeams = browse.isLoadingTeams,
+            teamsError = browse.teamsError,
             registrationError = registrationError
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
@@ -80,19 +89,38 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
         }
+
+        loadLeagues()
     }
 
-    fun selectLeague(league: League) {
-        leagueState.update { it.copy(selectedLeague = league, isLoading = true, error = null) }
+    private fun loadLeagues() {
+        leagueState.update { it.copy(isLoadingLeagues = true, leaguesError = null) }
         viewModelScope.launch {
             try {
-                val teams = footballRepository.getTeamsByLeague(league.id)
-                leagueState.update { it.copy(teams = teams, isLoading = false) }
+                val leagues = footballRepository.getLeagues()
+                leagueState.update { it.copy(leagues = leagues, isLoadingLeagues = false) }
             } catch (e: Exception) {
                 leagueState.update {
                     it.copy(
-                        isLoading = false,
-                        error = "Não foi possível carregar os times. Verifique o backend e a conexão."
+                        isLoadingLeagues = false,
+                        leaguesError = "Não foi possível carregar as ligas. Verifique o backend e a conexão."
+                    )
+                }
+            }
+        }
+    }
+
+    fun selectLeague(league: League) {
+        leagueState.update { it.copy(selectedLeague = league, isLoadingTeams = true, teamsError = null) }
+        viewModelScope.launch {
+            try {
+                val teams = footballRepository.getTeamsByLeague(league.slug)
+                leagueState.update { it.copy(teams = teams, isLoadingTeams = false) }
+            } catch (e: Exception) {
+                leagueState.update {
+                    it.copy(
+                        isLoadingTeams = false,
+                        teamsError = "Não foi possível carregar os times. Verifique o backend e a conexão."
                     )
                 }
             }
@@ -110,7 +138,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                     id = team.id,
                     name = team.name,
                     logoUrl = team.logo.orEmpty(),
-                    leagueId = league.id
+                    leagueSlug = league.slug
                 )
             }
             prefsRepository.saveFavorites(updated)
