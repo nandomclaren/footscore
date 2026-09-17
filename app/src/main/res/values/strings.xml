@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Footscore</string>
+
+    <string name="notification_channel_name">Resumo diário de resultados</string>
+    <string name="notification_channel_description">Notificação diária com os placares dos seus times favoritos</string>
+    <string name="notification_title">Footscore</string>
+    <string name="notification_no_games_text">Nenhum dos seus times jogou hoje ou ontem.</string>
+</resources>
